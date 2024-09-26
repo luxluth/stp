@@ -1,15 +1,9 @@
 use stp::Tokenizer;
 
 fn main() {
-    let mut tokenizer = Tokenizer::new(
-        r#"
-Lorem ipsum dolor sit amet, consectetur adipiscing elit,
-sed do eiusmod tempor incididunt ut labore et dolore 
-magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation 
-ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure 
-dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. 
-Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia 
-deserunt mollit anim id est laborum."#,
-    );
-    println!("{:?}", tokenizer.tokenize());
+    let mut tokenizer =
+        Tokenizer::new("0b01010101000 0xFFFffFFF 0o4543431234 1324.4534543 3453987 .924894");
+    let tokens = tokenizer.tokenize();
+    eprintln!("---------\nparsed {} token(s)\n---------", tokens.len());
+    eprintln!("{tokens:?}");
 }
