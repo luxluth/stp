@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum NumberType {
     Float,
     Hex,
@@ -7,16 +7,23 @@ pub enum NumberType {
     Seq,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum TokenType {
     Word,
     Number(NumberType),
     String,
+    Char,
     Symbol,
 }
 
 #[derive(Debug)]
 pub struct Loc(pub usize, pub usize);
+
+impl std::fmt::Display for Loc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.0 + 1, self.1 + 1)
+    }
+}
 
 #[derive(Debug)]
 pub struct Token {
@@ -29,14 +36,40 @@ pub struct Tokenizer {
     pub lines: Vec<Vec<char>>,
     ln: usize,
     col: usize,
+    config: TokenizerConfig,
 }
 
-// TODO:
-// pub struct TokenizerBuilder {
-//     string_del: char,
-//     char_token_exist: bool,
-//     char_del: char,
-// }
+#[derive(Default, Clone)]
+pub struct TokenizerConfig {
+    parse_char_as_string: bool,
+}
+
+#[derive(Clone)]
+pub struct TokenizerBuilder {
+    conf: TokenizerConfig,
+}
+
+impl TokenizerBuilder {
+    pub fn new() -> TokenizerBuilder {
+        TokenizerBuilder {
+            conf: TokenizerConfig::default(),
+        }
+    }
+
+    pub fn parse_char_as_string(self, set_to: bool) -> Self {
+        let mut lb = TokenizerBuilder::new();
+        lb.conf = self.conf;
+        lb.conf.parse_char_as_string = set_to;
+        lb
+    }
+
+    pub fn build<T>(self, with_input: T) -> Tokenizer
+    where
+        T: ToString,
+    {
+        Tokenizer::new(with_input, self.conf)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum OutOfBound {
@@ -45,8 +78,17 @@ enum OutOfBound {
     Within,
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum TokenizationError {
+    #[error("No valid char at {0}")]
+    NotAValidChar(Loc),
+}
+
 impl Tokenizer {
-    pub fn new<T>(input: T) -> Self
+    pub fn builder() -> TokenizerBuilder {
+        TokenizerBuilder::new()
+    }
+    pub fn new<T>(input: T, config: TokenizerConfig) -> Self
     where
         T: ToString,
     {
@@ -55,6 +97,7 @@ impl Tokenizer {
             lines: input.lines().map(|line| line.chars().collect()).collect(),
             ln: 0,
             col: 0,
+            config,
         }
     }
 
@@ -151,7 +194,7 @@ impl Tokenizer {
         self.col = 0;
     }
 
-    fn get_lc(&self) -> Option<&char> {
+    fn get_next_char(&self) -> Option<&char> {
         if self.is_out_of_bound() == OutOfBound::Within {
             Some(&self.lines[self.ln][self.col])
         } else {
@@ -168,11 +211,11 @@ impl Tokenizer {
         }
     }
 
-    pub fn parse_word(&mut self) -> Token {
+    fn parse_word(&mut self) -> Result<Token, TokenizationError> {
         let mut word = String::new();
         let start_ln = self.ln;
         let start_col = self.col;
-        while let Some(c) = self.get_lc() {
+        while let Some(c) = self.get_next_char() {
             if *c != ' ' {
                 word.push(*c);
             } else {
@@ -181,26 +224,26 @@ impl Tokenizer {
             self.consume(1);
         }
 
-        Token {
+        Ok(Token {
             r#type: TokenType::Word,
             value: Box::new(word),
             loc: Loc(start_ln, start_col),
-        }
+        })
     }
 
-    pub fn parse_float(&mut self) -> Token {
+    fn parse_float(&mut self) -> Result<Token, TokenizationError> {
         let mut float = String::new();
         let start_ln = self.ln;
         let start_col = self.col;
         let mut encountered_dot = false;
 
-        if *self.get_lc().unwrap() == '.' {
+        if *self.get_next_char().unwrap() == '.' {
             float.push_str("0.");
             encountered_dot = true;
             self.consume(1);
         }
 
-        while let Some(c) = self.get_lc() {
+        while let Some(c) = self.get_next_char() {
             if c.is_ascii_digit() {
                 float.push(*c);
             } else if *c == '.' {
@@ -216,14 +259,14 @@ impl Tokenizer {
             self.consume(1);
         }
 
-        Token {
+        Ok(Token {
             r#type: TokenType::Number(NumberType::Float),
             value: Box::new(float),
             loc: Loc(start_ln, start_col),
-        }
+        })
     }
 
-    pub fn parse_number(&mut self) -> Token {
+    fn parse_number(&mut self) -> Result<Token, TokenizationError> {
         let mut num_type = NumberType::Seq;
         let mut parsing_float = false;
         let mut num = String::new();
@@ -231,7 +274,7 @@ impl Tokenizer {
         let start_ln = self.ln;
         let start_col = self.col;
 
-        while let Some(c) = self.get_lc() {
+        while let Some(c) = self.get_next_char() {
             if c.is_ascii_digit() {
                 num.push(*c);
             } else if *c == '.' {
@@ -248,21 +291,21 @@ impl Tokenizer {
             self.consume(1);
         }
 
-        Token {
+        Ok(Token {
             r#type: TokenType::Number(num_type),
             value: Box::new(num),
             loc: Loc(start_ln, start_col),
-        }
+        })
     }
 
-    pub fn parse_binary(&mut self) -> Token {
+    fn parse_binary(&mut self) -> Result<Token, TokenizationError> {
         let mut num = String::new();
 
         let start_ln = self.ln;
         let start_col = self.col;
         self.consume(2);
 
-        while let Some(c) = self.get_lc() {
+        while let Some(c) = self.get_next_char() {
             if matches!(*c, '1' | '0') {
                 num.push(*c);
             } else {
@@ -271,21 +314,21 @@ impl Tokenizer {
             self.consume(1);
         }
 
-        Token {
+        Ok(Token {
             r#type: TokenType::Number(NumberType::Binary),
             value: Box::new(num),
             loc: Loc(start_ln, start_col),
-        }
+        })
     }
 
-    pub fn parse_hex(&mut self) -> Token {
+    fn parse_hex(&mut self) -> Result<Token, TokenizationError> {
         let mut num = String::new();
 
         let start_ln = self.ln;
         let start_col = self.col;
         self.consume(2);
 
-        while let Some(c) = self.get_lc() {
+        while let Some(c) = self.get_next_char() {
             if c.is_ascii_hexdigit() {
                 num.push(*c);
             } else {
@@ -294,21 +337,21 @@ impl Tokenizer {
             self.consume(1);
         }
 
-        Token {
+        Ok(Token {
             r#type: TokenType::Number(NumberType::Hex),
             value: Box::new(num),
             loc: Loc(start_ln, start_col),
-        }
+        })
     }
 
-    pub fn parse_octal(&mut self) -> Token {
+    fn parse_octal(&mut self) -> Result<Token, TokenizationError> {
         let mut num = String::new();
 
         let start_ln = self.ln;
         let start_col = self.col;
         self.consume(2);
 
-        while let Some(c) = self.get_lc() {
+        while let Some(c) = self.get_next_char() {
             if matches!(*c, '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7') {
                 num.push(*c);
             } else {
@@ -317,72 +360,144 @@ impl Tokenizer {
             self.consume(1);
         }
 
-        Token {
+        Ok(Token {
             r#type: TokenType::Number(NumberType::Octal),
             value: Box::new(num),
             loc: Loc(start_ln, start_col),
+        })
+    }
+
+    fn parse_string(&mut self) -> Result<Token, TokenizationError> {
+        let mut string = String::new();
+        let mut is_escaped = false;
+        let start_ln = self.ln;
+        let start_col = self.col;
+
+        self.consume(1);
+
+        while let Some(c) = self.get_next_char() {
+            if *c == '"' && !is_escaped {
+                self.consume(1);
+                break;
+            }
+            if *c == '\\' && !is_escaped {
+                is_escaped = true;
+                self.consume(1);
+                continue;
+            }
+            string.push(*c);
+            is_escaped = false;
+            self.consume(1);
+        }
+
+        Ok(Token {
+            r#type: TokenType::String,
+            value: Box::new(string),
+            loc: Loc(start_ln, start_col),
+        })
+    }
+
+    fn parse_char(&mut self) -> Result<Token, TokenizationError> {
+        let mut chr = String::new();
+        let mut is_escaped = false;
+        let start_ln = self.ln;
+        let start_col = self.col;
+
+        self.consume(1);
+
+        while let Some(c) = self.get_next_char() {
+            if *c == '\'' && !is_escaped {
+                self.consume(1);
+                break;
+            }
+            if *c == '\\' && !is_escaped {
+                is_escaped = true;
+                self.consume(1);
+                continue;
+            }
+            chr.push(*c);
+            is_escaped = false;
+            self.consume(1);
+        }
+
+        let out_type = if !self.config.parse_char_as_string {
+            TokenType::Char
+        } else {
+            TokenType::String
+        };
+
+        if out_type == TokenType::Char && chr.len() > 1 {
+            Err(TokenizationError::NotAValidChar(Loc(start_ln, start_col)))
+        } else {
+            Ok(Token {
+                r#type: out_type,
+                value: Box::new(chr),
+                loc: Loc(start_ln, start_col),
+            })
         }
     }
 
-    pub fn tokenize(&mut self) -> Vec<Token> {
+    pub fn tokenize(&mut self) -> Result<Vec<Token>, TokenizationError> {
         let mut tokens = vec![];
         while self.is_out_of_bound() != OutOfBound::Out {
             if self.is_out_of_bound() == OutOfBound::Empty {
                 self.next_line();
             } else {
-                match self.get_lc().unwrap() {
-                    ' ' => {
+                let next_char = self.get_next_char().unwrap();
+                if matches!(next_char, ' ') {
+                    self.consume(1);
+                } else if matches!(next_char, '0'..='9') {
+                    let first_digit = *self.get_next_char().unwrap();
+                    if first_digit == '0' {
+                        if let Some(c) = self.peek_tok() {
+                            match *c {
+                                'x' => {
+                                    tokens.push(self.parse_hex()?);
+                                }
+                                'o' => {
+                                    tokens.push(self.parse_octal()?);
+                                }
+                                'b' => {
+                                    tokens.push(self.parse_binary()?);
+                                }
+                                '.' => {
+                                    tokens.push(self.parse_float()?);
+                                }
+                                _ => {
+                                    tokens.push(self.parse_number()?);
+                                }
+                            };
+                        } else {
+                            tokens.push(self.parse_number()?);
+                        }
+                    } else {
+                        tokens.push(self.parse_number()?);
+                    }
+                } else if matches!(next_char, '.') {
+                    if let Some(c) = self.peek_tok() {
+                        if *c == '\n' {
+                            self.consume(1);
+                        } else if c.is_ascii_digit() {
+                            tokens.push(self.parse_float()?);
+                        }
+                    } else {
+                        tokens.push(Token {
+                            r#type: TokenType::Symbol,
+                            value: Box::new(".".into()),
+                            loc: Loc(self.ln, self.col),
+                        });
                         self.consume(1);
                     }
-                    '0'..='9' => {
-                        let first_digit = *self.get_lc().unwrap();
-                        if first_digit == '0' {
-                            if let Some(c) = self.peek_tok() {
-                                match *c {
-                                    'x' => {
-                                        tokens.push(self.parse_hex());
-                                    }
-                                    'o' => {
-                                        tokens.push(self.parse_octal());
-                                    }
-                                    'b' => {
-                                        tokens.push(self.parse_binary());
-                                    }
-                                    '.' => {
-                                        tokens.push(self.parse_float());
-                                    }
-                                    _ => {
-                                        tokens.push(self.parse_number());
-                                    }
-                                };
-                            } else {
-                                tokens.push(self.parse_number());
-                            }
-                        } else {
-                            tokens.push(self.parse_number());
-                        }
-                    }
-                    '.' => {
-                        if let Some(c) = self.peek_tok() {
-                            if *c == '\n' {
-                                self.consume(1);
-                            } else if c.is_ascii_digit() {
-                                tokens.push(self.parse_float());
-                            }
-                        } else {
-                            tokens.push(Token {
-                                r#type: TokenType::Symbol,
-                                value: Box::new(".".into()),
-                                loc: Loc(self.ln, self.col),
-                            });
-                            self.consume(1);
-                        }
-                    }
-                    _ => tokens.push(self.parse_word()),
+                } else if matches!(next_char, '"') {
+                    tokens.push(self.parse_string()?);
+                } else if matches!(next_char, '\'') {
+                    tokens.push(self.parse_char()?);
+                } else {
+                    tokens.push(self.parse_word()?)
                 }
             }
         }
 
-        tokens
+        Ok(tokens)
     }
 }
