@@ -39,9 +39,22 @@ pub struct Tokenizer {
     config: TokenizerConfig,
 }
 
+#[derive(Clone)]
+pub enum Choice<T> {
+    Yes(T),
+    No,
+}
+
+impl<T> Default for Choice<T> {
+    fn default() -> Self {
+        Self::No
+    }
+}
+
 #[derive(Default, Clone)]
 pub struct TokenizerConfig {
     parse_char_as_string: bool,
+    allow_digit_separator: Choice<char>,
 }
 
 #[derive(Clone)]
