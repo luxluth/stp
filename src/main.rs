@@ -1,9 +1,12 @@
 use stp::Tokenizer;
 
 fn main() {
-    let mut tokenizer = Tokenizer::builder().parse_char_as_string(true).build(
-        "0b01010101000 0xFFFffFFF 0o4543431234 1324.4534543 3453987 .924894 ; 3 'あいしている'",
-    );
+    let mut tokenizer = Tokenizer::builder()
+        .parse_char_as_string(true)
+        .allow_digit_separator(stp::Choice::Yes('_'))
+        .build(
+            "0b01010101000 0xFFFffFFF 0o4543431234 1324.4534543 3_453_987 450 .924894 ; 3 'あいしている'",
+        );
 
     match tokenizer.tokenize() {
         Ok(tokens) => {

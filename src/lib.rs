@@ -76,6 +76,13 @@ impl TokenizerBuilder {
         lb
     }
 
+    pub fn allow_digit_separator(self, choice: Choice<char>) -> Self {
+        let mut lb = TokenizerBuilder::new();
+        lb.conf = self.conf;
+        lb.conf.allow_digit_separator = choice;
+        lb
+    }
+
     pub fn build<T>(self, with_input: T) -> Tokenizer
     where
         T: ToString,
@@ -95,6 +102,8 @@ enum OutOfBound {
 pub enum TokenizationError {
     #[error("No valid char at {0}")]
     NotAValidChar(Loc),
+    #[error("Unexpected digit separator at {0}")]
+    UnexpectedDigitSeparator(Loc),
 }
 
 impl Tokenizer {
@@ -286,6 +295,7 @@ impl Tokenizer {
 
         let start_ln = self.ln;
         let start_col = self.col;
+        let mut inner_col = self.col;
 
         while let Some(c) = self.get_next_char() {
             if c.is_ascii_digit() {
@@ -298,9 +308,29 @@ impl Tokenizer {
                     num.push('.');
                     num_type = NumberType::Float
                 }
+            } else if let Choice::Yes(with) = &self.config.allow_digit_separator {
+                if *c == *with {
+                    self.consume(1);
+                    if let Some(next_char) = self.get_next_char() {
+                        if !next_char.is_ascii_digit() {
+                            return Err(TokenizationError::UnexpectedDigitSeparator(Loc(
+                                start_ln, inner_col,
+                            )));
+                        } else {
+                            num.push(*next_char);
+                        }
+                    } else {
+                        return Err(TokenizationError::UnexpectedDigitSeparator(Loc(
+                            start_ln, inner_col,
+                        )));
+                    }
+                } else {
+                    break;
+                }
             } else {
                 break;
             }
+            inner_col += 1;
             self.consume(1);
         }
 
