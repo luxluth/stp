@@ -40,7 +40,7 @@ pub struct Tokenizer {
     config: TokenizerConfig,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Choice<T> {
     Yes(T),
     No,
@@ -52,7 +52,7 @@ impl<T> Default for Choice<T> {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct TokenizerConfig {
     parse_char_as_string: bool,
     allow_digit_separator: Choice<char>,
@@ -60,7 +60,7 @@ pub struct TokenizerConfig {
     consider_as_operators: Vec<char>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TokenizerBuilder {
     conf: TokenizerConfig,
 }
