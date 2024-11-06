@@ -55,6 +55,7 @@ impl<T> Default for Choice<T> {
 pub struct TokenizerConfig {
     parse_char_as_string: bool,
     allow_digit_separator: Choice<char>,
+    consider_as_symbols: Vec<char>,
 }
 
 #[derive(Clone)]
@@ -65,7 +66,10 @@ pub struct TokenizerBuilder {
 impl TokenizerBuilder {
     pub fn new() -> TokenizerBuilder {
         TokenizerBuilder {
-            conf: TokenizerConfig::default(),
+            conf: TokenizerConfig {
+                consider_as_symbols: vec!['.'],
+                ..Default::default()
+            },
         }
     }
 
@@ -80,6 +84,20 @@ impl TokenizerBuilder {
         let mut lb = TokenizerBuilder::new();
         lb.conf = self.conf;
         lb.conf.allow_digit_separator = choice;
+        lb
+    }
+
+    pub fn add_symbol(self, sym: char) -> Self {
+        let mut lb = TokenizerBuilder::new();
+        lb.conf = self.conf;
+        lb.conf.consider_as_symbols.push(sym);
+        lb
+    }
+
+    pub fn add_symbols(self, sym: &[char]) -> Self {
+        let mut lb = TokenizerBuilder::new();
+        lb.conf = self.conf;
+        lb.conf.consider_as_symbols.extend(sym);
         lb
     }
 
@@ -115,6 +133,7 @@ impl Tokenizer {
         T: ToString,
     {
         let input = input.to_string();
+        eprintln!("Symbols: {:?}", config.consider_as_symbols);
         Self {
             lines: input.lines().map(|line| line.chars().collect()).collect(),
             ln: 0,
@@ -535,6 +554,13 @@ impl Tokenizer {
                     tokens.push(self.parse_string()?);
                 } else if matches!(next_char, '\'') {
                     tokens.push(self.parse_char()?);
+                } else if self.config.consider_as_symbols.contains(&next_char) {
+                    tokens.push(Token {
+                        r#type: TokenType::Symbol,
+                        value: Box::new(next_char.to_string()),
+                        loc: Loc(self.ln, self.col),
+                    });
+                    self.consume(1);
                 } else {
                     tokens.push(self.parse_word()?)
                 }
