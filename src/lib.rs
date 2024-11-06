@@ -14,6 +14,7 @@ pub enum TokenType {
     String,
     Char,
     Symbol,
+    Operator,
 }
 
 #[derive(Debug)]
@@ -56,6 +57,7 @@ pub struct TokenizerConfig {
     parse_char_as_string: bool,
     allow_digit_separator: Choice<char>,
     consider_as_symbols: Vec<char>,
+    consider_as_operators: Vec<char>,
 }
 
 #[derive(Clone)]
@@ -94,10 +96,24 @@ impl TokenizerBuilder {
         lb
     }
 
-    pub fn add_symbols(self, sym: &[char]) -> Self {
+    pub fn add_symbols(self, syms: &[char]) -> Self {
         let mut lb = TokenizerBuilder::new();
         lb.conf = self.conf;
-        lb.conf.consider_as_symbols.extend(sym);
+        lb.conf.consider_as_symbols.extend(syms);
+        lb
+    }
+
+    pub fn add_operator(self, op: char) -> Self {
+        let mut lb = TokenizerBuilder::new();
+        lb.conf = self.conf;
+        lb.conf.consider_as_operators.push(op);
+        lb
+    }
+
+    pub fn add_operators(self, ops: &[char]) -> Self {
+        let mut lb = TokenizerBuilder::new();
+        lb.conf = self.conf;
+        lb.conf.consider_as_operators.extend(ops);
         lb
     }
 
@@ -258,7 +274,13 @@ impl Tokenizer {
         let start_col = self.col;
         while let Some(c) = self.get_next_char() {
             if *c != ' ' {
-                word.push(*c);
+                if !self.config.consider_as_symbols.contains(c)
+                    && !self.config.consider_as_operators.contains(c)
+                {
+                    word.push(*c);
+                } else {
+                    break;
+                }
             } else {
                 break;
             }
@@ -557,6 +579,13 @@ impl Tokenizer {
                 } else if self.config.consider_as_symbols.contains(&next_char) {
                     tokens.push(Token {
                         r#type: TokenType::Symbol,
+                        value: Box::new(next_char.to_string()),
+                        loc: Loc(self.ln, self.col),
+                    });
+                    self.consume(1);
+                } else if self.config.consider_as_operators.contains(&next_char) {
+                    tokens.push(Token {
+                        r#type: TokenType::Operator,
                         value: Box::new(next_char.to_string()),
                         loc: Loc(self.ln, self.col),
                     });
