@@ -1,20 +1,23 @@
+use std::time::SystemTime;
+
 use stp::Tokenizer;
+
+const TO_PARSE: &str = include_str!("./test.rs");
 
 fn main() {
     let mut tokenizer = Tokenizer::builder()
         .parse_char_as_string(true)
         .allow_digit_separator(stp::Choice::Yes('_'))
-        .add_symbols(&['{', '}', '(', ')', ';'])
-        .add_operators(&['+', '-', '*', '%', '/'])
-        .build(
-            r#"(0b01010101000+44-.10% 45*3)/4 0xFFFffFFF 
-            0o4543431234 1324.4534543 
-            3_453_987 450 
-            .924894;3 'あいしている' {a+b}"#,
-        );
-
+        .add_symbols(&['{', '}', '(', ')', ';', '#', ',', '[', ']'])
+        .add_operators(&['+', '-', '*', '%', '/', '&'])
+        .build(TO_PARSE);
+    let start_time = SystemTime::now();
     match tokenizer.tokenize() {
         Ok(tokens) => {
+            eprintln!(
+                "-> elapsed: {}µs",
+                start_time.elapsed().unwrap().as_micros()
+            );
             eprintln!("---------\nparsed {} token(s)\n---------", tokens.len());
             eprintln!("{tokens:?}");
         }
