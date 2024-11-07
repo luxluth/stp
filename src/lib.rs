@@ -1,3 +1,7 @@
+use error::TokenizationError;
+
+pub mod error;
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum NumberType {
     Float,
@@ -130,14 +134,6 @@ enum OutOfBound {
     Empty,
     Out,
     Within,
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum TokenizationError {
-    #[error("No valid char at {0}")]
-    NotAValidChar(Loc),
-    #[error("Unexpected digit separator at {0}")]
-    UnexpectedDigitSeparator(Loc),
 }
 
 impl Tokenizer {
