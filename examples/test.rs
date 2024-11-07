@@ -18,11 +18,11 @@ fn main() {
                 "-> elapsed: {}µs",
                 start_time.elapsed().unwrap().as_micros()
             );
-            eprintln!("---------\nparsed {} token(s)\n---------", tokens.len());
-            eprintln!("{tokens:?}");
+            println!("---------\nparsed {} token(s)\n---------", tokens.len());
+            println!("{tokens:?}");
         }
         Err(e) => {
-            eprintln!("{e}")
+            println!("{e}")
         }
     }
 }
