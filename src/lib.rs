@@ -562,6 +562,13 @@ impl Tokenizer {
                             self.consume(1);
                         } else if c.is_ascii_digit() {
                             tokens.push(self.parse_float()?);
+                        } else {
+                            tokens.push(Token {
+                                r#type: TokenType::Symbol,
+                                value: Box::new(".".into()),
+                                loc: Loc(self.ln, self.col),
+                            });
+                            self.consume(1);
                         }
                     } else {
                         tokens.push(Token {
