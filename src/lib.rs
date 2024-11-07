@@ -149,7 +149,6 @@ impl Tokenizer {
         T: ToString,
     {
         let input = input.to_string();
-        eprintln!("Symbols: {:?}", config.consider_as_symbols);
         Self {
             lines: input.lines().map(|line| line.chars().collect()).collect(),
             ln: 0,
