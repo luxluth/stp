@@ -1,13 +1,13 @@
 use std::time::SystemTime;
 
-use stp::Tokenizer;
+use tinytoken::Tokenizer;
 
 const TO_PARSE: &str = include_str!("./test.rs");
 
 fn main() {
     let tokenizer = Tokenizer::builder()
         .parse_char_as_string(true)
-        .allow_digit_separator(stp::Choice::Yes('_'))
+        .allow_digit_separator(tinytoken::Choice::Yes('_'))
         .add_symbols(&['{', '}', '(', ')', ';', '#', ',', '[', ']'])
         .add_operators(&['+', '-', '*', '%', '/', '&'])
         .build(TO_PARSE);

@@ -1,4 +1,4 @@
-# Simple Tokenizer Preset (STP)
+# tinytoken
 
 This library provides a tokenizer for parsing and categorizing different types
 of tokens, such as words, numbers, strings, characters, symbols, and operators.
@@ -8,7 +8,7 @@ formats, enabling fine-grained control over how text input is parsed.
 ## Example
 
 ```rust
-use stp::{Tokenizer, TokenizerBuilder, Choice};
+use tinytoken::{Tokenizer, TokenizerBuilder, Choice};
 
 fn main() {
     let tokenizer = TokenizerBuilder::new()
