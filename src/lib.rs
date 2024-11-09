@@ -1,28 +1,52 @@
+#![doc = include_str!("../README.md")]
+
 use error::TokenizationError;
 
+/// Contains error definitions specific to tokenization
 pub mod error;
 
+/// Represents the types of numeric tokens recognized by the tokenizer
 #[derive(Debug, PartialEq, Eq)]
 pub enum NumberType {
+    /// Floating-point numbers (e.g., `3.14`, `.25`)
     Float,
+    /// Hexadecimal numbers (e.g., `0x1A3F`)
     Hex,
+    /// Binary numbers (e.g., `0b1010`)
     Binary,
+    /// Octal numbers (e.g., `0o755`)
     Octal,
+    /// Sequential integers (e.g., `12345`)
     Seq,
 }
 
+/// Represents all possible token types that can be parsed by the tokenizer
 #[derive(Debug, PartialEq, Eq)]
 pub enum TokenType {
+    /// Any alphanumeric string
     Word,
+    /// A numeric token, where [NumberType] specifies the format
     Number(NumberType),
+    /// A sequence of characters surrounded by double quotes ("example")
     String,
+    /// A single character surrounded by single quotes ('a')
     Char,
+    /// A character recognized as a symbol
     Symbol,
+    /// A character recognized as an operator
     Operator,
 }
 
+/// Represents the location of a token in the input text, with line and column values
+///
+/// Format: Formats Loc as `<line+1>`:`<column+1>`.
 #[derive(Debug)]
-pub struct Loc(pub usize, pub usize);
+pub struct Loc(
+    /// Line number (0-based index)
+    pub usize,
+    /// Column number (0-based index)
+    pub usize,
+);
 
 impl std::fmt::Display for Loc {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -30,13 +54,18 @@ impl std::fmt::Display for Loc {
     }
 }
 
+/// Represents an individual token with type, value, and location
 #[derive(Debug)]
 pub struct Token {
+    /// The [TokenType] of the token
     pub r#type: TokenType,
+    /// The text of the token
     pub value: Box<String>,
+    /// The location of the token in the input
     pub loc: Loc,
 }
 
+/// Primary struct for tokenizing an input string, with methods for parsing and generating tokens
 pub struct Tokenizer {
     pub lines: Vec<Vec<char>>,
     ln: usize,
@@ -44,9 +73,12 @@ pub struct Tokenizer {
     config: TokenizerConfig,
 }
 
+/// Configurable option for specific settings in [TokenizerConfig]
 #[derive(Debug, Clone)]
 pub enum Choice<T> {
+    /// An active choice with a specified value of type T
     Yes(T),
+    /// No active choice
     No,
 }
 
@@ -56,20 +88,28 @@ impl<T> Default for Choice<T> {
     }
 }
 
+/// Configuration struct for the tokenizer, allowing customization of tokenization behavior
 #[derive(Default, Clone, Debug)]
 pub struct TokenizerConfig {
+    /// Whether single characters should be treated as strings and therefore may contains more than
+    /// one character
     parse_char_as_string: bool,
+    /// Allows a specific character as a digit separator (e.g., `_`)
     allow_digit_separator: Choice<char>,
+    /// List of characters to be treated as symbols
     consider_as_symbols: Vec<char>,
+    /// List of characters to be treated as operators
     consider_as_operators: Vec<char>,
 }
 
+/// A builder struct for creating a [TokenizerConfig] instance with customized options
 #[derive(Clone, Debug)]
 pub struct TokenizerBuilder {
     conf: TokenizerConfig,
 }
 
 impl TokenizerBuilder {
+    /// Creates a default [TokenizerBuilder]
     pub fn new() -> TokenizerBuilder {
         TokenizerBuilder {
             conf: TokenizerConfig {
@@ -79,6 +119,7 @@ impl TokenizerBuilder {
         }
     }
 
+    /// Configures character parsing behavior
     pub fn parse_char_as_string(self, set_to: bool) -> Self {
         let mut lb = TokenizerBuilder::new();
         lb.conf = self.conf;
@@ -86,6 +127,7 @@ impl TokenizerBuilder {
         lb
     }
 
+    /// Sets the digit separator
     pub fn allow_digit_separator(self, choice: Choice<char>) -> Self {
         let mut lb = TokenizerBuilder::new();
         lb.conf = self.conf;
@@ -93,6 +135,7 @@ impl TokenizerBuilder {
         lb
     }
 
+    /// Adds a symbol character
     pub fn add_symbol(self, sym: char) -> Self {
         let mut lb = TokenizerBuilder::new();
         lb.conf = self.conf;
@@ -100,6 +143,7 @@ impl TokenizerBuilder {
         lb
     }
 
+    /// Adds multiple symbol characters
     pub fn add_symbols(self, syms: &[char]) -> Self {
         let mut lb = TokenizerBuilder::new();
         lb.conf = self.conf;
@@ -107,6 +151,7 @@ impl TokenizerBuilder {
         lb
     }
 
+    /// Adds an operator character
     pub fn add_operator(self, op: char) -> Self {
         let mut lb = TokenizerBuilder::new();
         lb.conf = self.conf;
@@ -114,6 +159,7 @@ impl TokenizerBuilder {
         lb
     }
 
+    /// Adds multiple operator characters
     pub fn add_operators(self, ops: &[char]) -> Self {
         let mut lb = TokenizerBuilder::new();
         lb.conf = self.conf;
@@ -121,6 +167,7 @@ impl TokenizerBuilder {
         lb
     }
 
+    /// Constructs a [Tokenizer] with the specified input and configuration.
     pub fn build<T>(self, with_input: T) -> Tokenizer
     where
         T: ToString,
@@ -137,9 +184,11 @@ enum OutOfBound {
 }
 
 impl Tokenizer {
+    /// Creates a TokenizerBuilder instance for configuring and initializing the tokenizer
     pub fn builder() -> TokenizerBuilder {
         TokenizerBuilder::new()
     }
+    /// Initializes the tokenizer with input text and a configuration
     pub fn new<T>(input: T, config: TokenizerConfig) -> Self
     where
         T: ToString,
@@ -516,6 +565,7 @@ impl Tokenizer {
         }
     }
 
+    /// Tokenizes the input and returns a list of Tokens or a [TokenizationError] if parsing fails
     pub fn tokenize(&mut self) -> Result<Vec<Token>, TokenizationError> {
         let mut tokens = vec![];
         while self.is_out_of_bound() != OutOfBound::Out {
