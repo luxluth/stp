@@ -1,9 +1,13 @@
 [package]
 name = "tinytoken"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Library for tokenizing text into words, numbers, symbols, and more, with customizable parsing options."
 license = "MIT"
+readme = "README.md"
+repository = "https://github.com/luxluth/tinytoken"
+homepage = "https://github.com/luxluth/tinytoken#readme"
+keywords = ["parser", "tokenizer"]
 
 [dependencies]
 
