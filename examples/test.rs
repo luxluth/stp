@@ -10,7 +10,9 @@ fn main() {
         .allow_digit_separator(tinytoken::Choice::Yes('_'))
         .add_symbols(&['{', '}', '(', ')', ';', '#', ',', '[', ']'])
         .add_operators(&['+', '-', '*', '%', '/', '&'])
+        .ignore_numbers(true)
         .build(TO_PARSE);
+    // A little comment 77777.
     let start_time = SystemTime::now();
     match tokenizer.tokenize() {
         Ok(tokens) => {

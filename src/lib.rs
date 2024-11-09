@@ -93,13 +93,15 @@ impl<T> Default for Choice<T> {
 pub struct TokenizerConfig {
     /// Whether single characters should be treated as strings and therefore may contains more than
     /// one character
-    parse_char_as_string: bool,
+    pub parse_char_as_string: bool,
+    /// Considers numbers as words
+    pub ignore_numbers: bool,
     /// Allows a specific character as a digit separator (e.g., `_`)
-    allow_digit_separator: Choice<char>,
+    pub allow_digit_separator: Choice<char>,
     /// List of characters to be treated as symbols
-    consider_as_symbols: Vec<char>,
+    pub consider_as_symbols: Vec<char>,
     /// List of characters to be treated as operators
-    consider_as_operators: Vec<char>,
+    pub consider_as_operators: Vec<char>,
 }
 
 /// A builder struct for creating a [TokenizerConfig] instance with customized options
@@ -124,6 +126,14 @@ impl TokenizerBuilder {
         let mut lb = TokenizerBuilder::new();
         lb.conf = self.conf;
         lb.conf.parse_char_as_string = set_to;
+        lb
+    }
+
+    /// Configures number parsing behaviour
+    pub fn ignore_numbers(self, set_to: bool) -> Self {
+        let mut lb = TokenizerBuilder::new();
+        lb.conf = self.conf;
+        lb.conf.ignore_numbers = set_to;
         lb
     }
 
@@ -575,7 +585,7 @@ impl Tokenizer {
                 let next_char = self.get_next_char().unwrap();
                 if matches!(next_char, ' ') {
                     self.consume(1);
-                } else if matches!(next_char, '0'..='9') {
+                } else if matches!(next_char, '0'..='9') && !self.config.ignore_numbers {
                     let first_digit = *self.get_next_char().unwrap();
                     if first_digit == '0' {
                         if let Some(c) = self.peek_tok() {
@@ -605,8 +615,13 @@ impl Tokenizer {
                 } else if matches!(next_char, '.') {
                     if let Some(c) = self.peek_tok() {
                         if *c == '\n' {
+                            tokens.push(Token {
+                                r#type: TokenType::Symbol,
+                                value: Box::new(".".into()),
+                                loc: Loc(self.ln, self.col),
+                            });
                             self.consume(1);
-                        } else if c.is_ascii_digit() {
+                        } else if c.is_ascii_digit() && !self.config.ignore_numbers {
                             tokens.push(self.parse_float()?);
                         } else {
                             tokens.push(Token {
