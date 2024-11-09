@@ -11,7 +11,7 @@ formats, enabling fine-grained control over how text input is parsed.
 use stp::{Tokenizer, TokenizerBuilder, Choice};
 
 fn main() {
-    let mut tokenizer = TokenizerBuilder::new()
+    let tokenizer = TokenizerBuilder::new()
         .parse_char_as_string(true)
         .allow_digit_separator(Choice::Yes('_'))
         .add_symbol('$')

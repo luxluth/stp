@@ -5,7 +5,7 @@ use stp::Tokenizer;
 const TO_PARSE: &str = include_str!("./test.rs");
 
 fn main() {
-    let mut tokenizer = Tokenizer::builder()
+    let tokenizer = Tokenizer::builder()
         .parse_char_as_string(true)
         .allow_digit_separator(stp::Choice::Yes('_'))
         .add_symbols(&['{', '}', '(', ')', ';', '#', ',', '[', ']'])

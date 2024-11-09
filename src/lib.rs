@@ -566,7 +566,7 @@ impl Tokenizer {
     }
 
     /// Tokenizes the input and returns a list of Tokens or a [TokenizationError] if parsing fails
-    pub fn tokenize(&mut self) -> Result<Vec<Token>, TokenizationError> {
+    pub fn tokenize(mut self) -> Result<Vec<Token>, TokenizationError> {
         let mut tokens = vec![];
         while self.is_out_of_bound() != OutOfBound::Out {
             if self.is_out_of_bound() == OutOfBound::Empty {
