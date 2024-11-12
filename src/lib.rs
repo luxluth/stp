@@ -505,16 +505,17 @@ impl Tokenizer {
         })
     }
 
-    fn parse_string(&mut self) -> Result<Token, TokenizationError> {
+    fn parse_string(&mut self, delim: Option<char>) -> Result<Token, TokenizationError> {
         let mut string = String::new();
         let mut is_escaped = false;
         let start_ln = self.ln;
         let start_col = self.col;
+        let delim = delim.unwrap_or('"');
 
         self.consume(1);
 
         while let Some(c) = self.get_next_char() {
-            if *c == '"' && !is_escaped {
+            if *c == delim && !is_escaped {
                 self.consume(1);
                 break;
             }
@@ -523,8 +524,32 @@ impl Tokenizer {
                 self.consume(1);
                 continue;
             }
-            string.push(*c);
-            is_escaped = false;
+            if is_escaped {
+                match *c {
+                    'n' => {
+                        string.push('\n');
+                    }
+                    '0' => {
+                        string.push('\0');
+                    }
+                    't' => {
+                        string.push('\t');
+                    }
+                    'r' => {
+                        string.push('\r');
+                    }
+                    '\\' => {
+                        string.push('\\');
+                    }
+                    _ => {
+                        string.push_str(&format!("\\{c}"));
+                    }
+                }
+
+                is_escaped = false;
+            } else {
+                string.push(*c);
+            }
             self.consume(1);
         }
 
@@ -536,42 +561,46 @@ impl Tokenizer {
     }
 
     fn parse_char(&mut self) -> Result<Token, TokenizationError> {
-        let mut chr = String::new();
-        let mut is_escaped = false;
-        let start_ln = self.ln;
-        let start_col = self.col;
+        if self.config.parse_char_as_string {
+            self.parse_string(Some('\''))
+        } else {
+            let mut chr = String::new();
+            let mut is_escaped = false;
+            let start_ln = self.ln;
+            let start_col = self.col;
 
-        self.consume(1);
-
-        while let Some(c) = self.get_next_char() {
-            if *c == '\'' && !is_escaped {
-                self.consume(1);
-                break;
-            }
-            if *c == '\\' && !is_escaped {
-                is_escaped = true;
-                self.consume(1);
-                continue;
-            }
-            chr.push(*c);
-            is_escaped = false;
             self.consume(1);
-        }
 
-        let out_type = if !self.config.parse_char_as_string {
-            TokenType::Char
-        } else {
-            TokenType::String
-        };
+            while let Some(c) = self.get_next_char() {
+                if *c == '\'' && !is_escaped {
+                    self.consume(1);
+                    break;
+                }
+                if *c == '\\' && !is_escaped {
+                    is_escaped = true;
+                    self.consume(1);
+                    continue;
+                }
+                chr.push(*c);
+                is_escaped = false;
+                self.consume(1);
+            }
 
-        if out_type == TokenType::Char && chr.len() > 1 {
-            Err(TokenizationError::NotAValidChar(Loc(start_ln, start_col)))
-        } else {
-            Ok(Token {
-                r#type: out_type,
-                value: Box::new(chr),
-                loc: Loc(start_ln, start_col),
-            })
+            let out_type = if !self.config.parse_char_as_string {
+                TokenType::Char
+            } else {
+                TokenType::String
+            };
+
+            if out_type == TokenType::Char && chr.len() > 1 {
+                Err(TokenizationError::NotAValidChar(Loc(start_ln, start_col)))
+            } else {
+                Ok(Token {
+                    r#type: out_type,
+                    value: Box::new(chr),
+                    loc: Loc(start_ln, start_col),
+                })
+            }
         }
     }
 
@@ -640,7 +669,7 @@ impl Tokenizer {
                         self.consume(1);
                     }
                 } else if matches!(next_char, '"') {
-                    tokens.push(self.parse_string()?);
+                    tokens.push(self.parse_string(None)?);
                 } else if matches!(next_char, '\'') {
                     tokens.push(self.parse_char()?);
                 } else if self.config.consider_as_symbols.contains(&next_char) {

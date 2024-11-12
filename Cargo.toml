@@ -1,6 +1,6 @@
 [package]
 name = "tinytoken"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 description = "Library for tokenizing text into words, numbers, symbols, and more, with customizable parsing options."
 license = "MIT"
