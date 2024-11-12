@@ -6,7 +6,7 @@ use error::TokenizationError;
 pub mod error;
 
 /// Represents the types of numeric tokens recognized by the tokenizer
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NumberType {
     /// Floating-point numbers (e.g., `3.14`, `.25`)
     Float,
@@ -21,7 +21,7 @@ pub enum NumberType {
 }
 
 /// Represents all possible token types that can be parsed by the tokenizer
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TokenType {
     /// Any alphanumeric string
     Word,
@@ -40,7 +40,7 @@ pub enum TokenType {
 /// Represents the location of a token in the input text, with line and column values
 ///
 /// Format: Formats Loc as `<line+1>`:`<column+1>`.
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Loc(
     /// Line number (0-based index)
     pub usize,
@@ -55,7 +55,7 @@ impl std::fmt::Display for Loc {
 }
 
 /// Represents an individual token with type, value, and location
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Token {
     /// The [TokenType] of the token
     pub r#type: TokenType,
@@ -74,15 +74,21 @@ pub struct Tokenizer {
 }
 
 /// Configurable option for specific settings in [TokenizerConfig]
-#[derive(Debug, Clone)]
-pub enum Choice<T> {
+#[derive(Debug, Clone, Copy)]
+pub enum Choice<T>
+where
+    T: Copy + Clone,
+{
     /// An active choice with a specified value of type T
     Yes(T),
     /// No active choice
     No,
 }
 
-impl<T> Default for Choice<T> {
+impl<T> Default for Choice<T>
+where
+    T: Copy + Clone,
+{
     fn default() -> Self {
         Self::No
     }
